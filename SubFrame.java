@@ -99,18 +99,46 @@ public class SubFrame extends JFrame {
      * タイマーが終了したときの処理。
      */
     private void timerFinished() {
-        quitTimer(); // タイマー停止とフレーム破棄
+        // 先にタイマーを停止し、このサブフレームを破棄する
+        quitTimer();
 
-        // 終了メッセージを表示（最前面になるように親を指定したいが、
-        // このフレームは破棄するのでnullで良い。自動的に最前面になるはず）
-        // 必要であれば一時的な非表示JFrameを親にするテクニックも使える
-        JOptionPane.showMessageDialog(null, // 親フレームなし
-                "時間だよ！",
-                "タイマー終了",
-                JOptionPane.INFORMATION_MESSAGE);
+        // 最前面表示用の一時的な親フレームを作成
+        final Frame tempParent = new JFrame();
+        try {
+            tempParent.setUndecorated(true); // タイトルバーなどを非表示に
 
-        // メッセージボックスが閉じられた後、アプリケーションを終了
-        System.exit(0);
+            // ★修正点: 一時フレームを画面中央に配置
+            tempParent.setLocationRelativeTo(null);
+
+            // 見えないように設定 (Opacityが推奨だが、効かない環境も考慮)
+            try {
+                // 透明度がサポートされていれば透明にする
+                tempParent.setOpacity(0.0f);
+            } catch (UnsupportedOperationException e) {
+                // 透明度がサポートされていない場合はサイズを0にする
+                System.err.println("Opacity not supported, setting size to 0x0.");
+                tempParent.setSize(0, 0);
+            }
+            // tempParent.setSize(0, 0); // 透明度を使わない場合はこちら
+
+            tempParent.setAlwaysOnTop(true); // 最前面に設定
+            tempParent.setVisible(true); // 一度表示状態にする
+
+            // 終了メッセージを表示 (一時フレームを親にする -> 中央表示される)
+            JOptionPane.showMessageDialog(tempParent, // 親フレームを指定
+                    "時間だよ！",
+                    "タイマー終了",
+                    JOptionPane.INFORMATION_MESSAGE);
+
+            // メッセージボックスが閉じられた後、アプリケーションを終了
+            System.exit(0);
+
+        } finally {
+            // 一時的な親フレームを確実に破棄
+            if (tempParent != null) {
+                tempParent.dispose();
+            }
+        }
     }
 
     /**
@@ -120,6 +148,8 @@ public class SubFrame extends JFrame {
         if (timer != null && timer.isRunning()) {
             timer.stop();
         }
-        dispose(); // このフレームを破棄
+        if (this.isDisplayable()) {
+            dispose();
+        }
     }
 }
